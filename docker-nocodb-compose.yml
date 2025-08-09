@@ -1,0 +1,21 @@
+# version: '3.8'
+
+services:
+  nocodb:
+    restart: unless-stopped
+    container_name: nocodb
+    image: docker.1ms.run/nocodb/nocodb:latest
+    ports:
+      - "3307:8080"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/nocodb/data:/usr/app/data
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/nocodb/logs:/usr/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - hadoop-nocodb-net
+
+networks:
+  hadoop-nocodb-net:
+    driver: bridge
+    attachable: true

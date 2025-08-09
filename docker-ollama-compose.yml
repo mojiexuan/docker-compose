@@ -1,0 +1,36 @@
+# version: '3.8'
+
+services:
+  ollama:
+    restart: unless-stopped
+    image: docker.1ms.run/ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '4'      # 最多 4 核
+          memory: 8G     # 最多 8GB
+        reservations:
+          memory: 4G    # 尽量保证 4GB
+#          devices:
+#            - driver: nvidia
+#              count: 1      # 使用 1 块 GPU
+#              capabilities: [ gpu ]
+    networks:
+      - hadoop-ollama-net
+
+networks:
+  hadoop-ollama-net:
+    driver: bridge
+    attachable: true

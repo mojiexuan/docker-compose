@@ -1,0 +1,42 @@
+# version: '3.8'
+
+services:
+  postgre-1:
+    restart: unless-stopped
+    container_name: postgres_db
+    image: docker.1ms.run/postgres:latest
+    command: [
+      "--max_connections=1000",
+      "--shared_buffers=512MB",
+      "--work_mem=16MB"
+    ]
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: root
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/postgres:/var/lib/postgresql/data
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "yourusername", "-d", "yourdbname"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          memory: 512M
+    networks:
+      - hadoop-postgres-net
+
+networks:
+  hadoop-postgres-net:
+    driver: bridge
+    attachable: true

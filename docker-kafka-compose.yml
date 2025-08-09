@@ -1,0 +1,73 @@
+# version: '3.8'
+
+services:
+  kafka-standalone:
+    restart: unless-stopped
+    image: docker.1ms.run/bitnami/kafka:latest
+    container_name: kafka
+    hostname: kafka-standalone
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+      - "9998:9998"
+      - "9095:9095"
+    environment:
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_BROKER_ID: 1
+      KAFKA_CFG_LISTENERS: CONTROLLER://:9094,BROKER://:9092,EXTERNAL://:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,BROKER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_ADVERTISED_LISTENERS: BROKER://kafka-standalone:9092,EXTERNAL://${HOST_IP}:9093
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: BROKER
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@127.0.0.1:9094
+      ALLOW_PLAINTEXT_LISTENER: yes
+      JMX_PORT: 9998
+      KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka -Dcom.sun.management.jmxremote.rmi.port=9998
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/kafka/data:/bitnami/kafka
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/kafka/logs:/logs
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'      # 最多 2 核
+          memory: 1.5G     # 最多 2GB
+        reservations:
+          memory: 1G    # 尽量保证 1GB
+    networks:
+      - hadoop-kafka-net
+
+
+# http://127.0.0.1:9096/kafkaui
+  kafka-ui:
+    restart: unless-stopped
+    container_name: kafka-ui
+    image: docker.1ms.run/provectuslabs/kafka-ui:latest
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "kafka-stand-alone"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka-standalone:9092"
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9998
+      SERVER_SERVLET_CONTEXT_PATH: /kafkaui
+      AUTH_TYPE: "LOGIN_FORM"
+      SPRING_SECURITY_USER_NAME: admin
+      SPRING_SECURITY_USER_PASSWORD: 123456
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    ports:
+      - "9096:8080"
+    depends_on:
+      - kafka-standalone
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/kafkaui:/etc/kafkaui/
+    networks:
+      - hadoop-kafka-net
+
+networks:
+  hadoop-kafka-net:
+    driver: bridge
+    attachable: true
