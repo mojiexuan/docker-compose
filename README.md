@@ -11,4 +11,4 @@
 
 ## Kafka UI
 
-[http://12](http://127.0.0.1:9096/kafkaui)
+http://127.0.0.1:9096/kafkaui
