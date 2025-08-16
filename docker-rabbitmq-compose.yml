@@ -1,0 +1,44 @@
+# version: '3.8'
+
+services:
+  rabbitmq:
+    restart: unless-stopped
+    container_name: rabbitmq
+    image: docker.1ms.run/rabbitmq:management
+    hostname: rabbitserver
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/rabbitmq/data:/var/lib/rabbitmq
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/rabbitmq/conf:/etc/rabbitmq
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/rabbitmq/plugins:/myplugins
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    environment:
+      - TZ=Asia/Shanghai
+      - RABBITMQ_DEFAULT-USER=rabbit
+      - RABBITMQ_DEFAULT_PASS=123456
+    command: /bin/bash -c "rabbitmq-plugins enable rabbitmq_management && rabbitmq-server"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          memory: 1G
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - hadoop-rabbitmq-net
+
+networks:
+  hadoop-rabbitmq-net:
+    driver: bridge
+    attachable: true
