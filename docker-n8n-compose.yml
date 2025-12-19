@@ -1,0 +1,55 @@
+# version: "3.8"
+name: "n8n"
+
+services:
+  postgres-1:
+    restart: unless-stopped
+    container_name: n8n_postgres
+    image: docker.1ms.run/postgres:16
+    command: [
+      "--max_connections=1000",
+      "--shared_buffers=512MB",
+      "--work_mem=16MB"
+    ]
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: n8n
+      TZ: Asia/Shanghai
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/n8n/postgres:/var/lib/postgresql/data
+    networks:
+      - hadoop-n8n-net
+
+  n8n-1:
+    image: docker.1ms.run/n8nio/n8n:stable
+    container_name: n8n_n8n
+    restart: unless-stopped
+    depends_on:
+      - postgres-1
+    ports:
+      - "5678:5678"
+    environment:
+      - TZ=Asia/Shanghai
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres-1
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=n8n
+      - DB_POSTGRESDB_PASSWORD=123456
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=123456
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/n8n/n8n_data:/home/node/.n8n
+    networks:
+      - hadoop-n8n-net
+
+networks:
+  hadoop-n8n-net:
+    driver: bridge
+    attachable: true
