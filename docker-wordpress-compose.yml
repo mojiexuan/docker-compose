@@ -1,0 +1,90 @@
+# WordPress 个人博客 Docker Compose 配置
+
+services:
+  wordpress-mysql:
+    restart: unless-stopped
+    container_name: mysql8
+    image: docker.1ms.run/mysql:8.0.36
+    command:
+      [
+        '--default-authentication-plugin=caching_sha2_password',
+        '--character-set-server=utf8mb4',
+        '--collation-server=utf8mb4_unicode_ci',
+        '--max_connections=1000',
+        '--innodb_buffer_pool_size=512M',
+      ]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wordpress}
+      MYSQL_USER: ${MYSQL_USER:-wordpress}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-dW0bE8oO8iA5oP4eW7cL8nV9xY8bQ3pB}
+      TZ: Asia/Shanghai
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/chenjiabao/mysql8:/var/lib/mysql
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mysqladmin',
+          'ping',
+          '-h',
+          'localhost',
+          '-uroot',
+          '-p${MYSQL_PASSWORD:-123456}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          memory: 512M
+    networks:
+      - wordpress-net
+
+  wordpress-wordpress:
+    image: docker.1ms.run/wordpress:6.7.2
+    container_name: wordpress6
+    depends_on:
+      wordpress-mysql:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: wordpress-mysql:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER:-wordpress}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD:-dW0bE8oO8iA5oP4eW7cL8nV9xY8bQ3pB}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE:-wordpress}
+      WORDPRESS_DEBUG: 0
+      # 域名配置（可选，设置后会写入 wp-config.php）
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', '${WORDPRESS_URL:-http://localhost:9999}');
+        define('WP_SITEURL', '${WORDPRESS_URL:-http://localhost:9999}');
+        // 反向代理支持 - 识别真实协议和IP
+        if (isset($$_SERVER['HTTP_X_FORWARDED_PROTO']) && $$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+            $$_SERVER['HTTPS'] = 'on';
+        }
+        if (isset($$_SERVER['HTTP_X_FORWARDED_HOST'])) {
+            $$_SERVER['HTTP_HOST'] = $$_SERVER['HTTP_X_FORWARDED_HOST'];
+        }
+    ports:
+      - '${WORDPRESS_PORT:-9999}:80'
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/chenjiabao/wordpress6/html:/var/www/html
+    labels:
+      createdBy: 'bt_apps'
+    networks:
+      - wordpress-net
+
+networks:
+  wordpress-net:
+    driver: bridge
